@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Watermarker/opencv_world490.dll
+/Watermarker/opencv_world490d.dll
+/Watermarker/opencv_world490.lib
+/Watermarker/opencv_world490d.lib
