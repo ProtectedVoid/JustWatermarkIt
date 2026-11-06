@@ -1,5 +1,7 @@
 ﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Tiff.Constants;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
+using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
@@ -31,16 +33,30 @@ namespace Watermarker.Library
             }
 
             var result = source.Clone(a => a.AutoOrient());
-
-            var watermarkBounds = PlacementCalculator.Compute(result.Size(), watermark.Size(), options.Mode);
-
-            result.Mutate(a =>
+            result.Metadata.ExifProfile = source.Metadata.ExifProfile?.DeepClone();
+            if(result.Metadata.ExifProfile is ExifProfile profile
+                && profile.GetValue(ExifTag.Orientation) != null)
             {
-                using var resizedWatermark = watermark.Clone(w => w.Resize(watermarkBounds.Width, watermarkBounds.Height));
-                a.DrawImage(resizedWatermark, new Point(watermarkBounds.X, watermarkBounds.Y), options.Opacity);
-            });
+                profile.RemoveValue(ExifTag.Orientation);
+            }
 
-            return result;
+            try
+            {
+                var watermarkBounds = PlacementCalculator.Compute(result.Size(), watermark.Size(), options.Mode);
+                using var resizedWatermark = watermark.Clone(w => w.Resize(watermarkBounds.Width, watermarkBounds.Height));
+
+                result.Mutate(a =>
+                {
+                    a.DrawImage(resizedWatermark, new Point(watermarkBounds.X, watermarkBounds.Y), options.Opacity);
+                });
+
+                return result;
+            }
+            catch (Exception)
+            {
+                result.Dispose();
+                throw;
+            }
         }
     }
 }

@@ -6,8 +6,11 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Watermarker.Library.Tests;
 
-// Hypothèse : static Image ApplyWaterMark(this Image source, Image watermark, WatermarkOptions options)
-// avec WatermarkOptions(float Opacity = 0.3f, PlacementMode Mode = PlacementMode.Wide)
+// Contrat testé :
+//   Image ApplyWatermark(this Image source, Image watermark, WatermarkOptions options)
+//   - renvoie une COPIE de la source avec le watermark posé ;
+//   - la source n'est JAMAIS modifiée : on lit les pixels sur l'image RENVOYÉE ;
+//   - l'appelant libère l'image renvoyée (d'où les « using var result »).
 [TestClass]
 public class ImageProcessorTests
 {
@@ -17,10 +20,15 @@ public class ImageProcessorTests
     private static Image<Rgba32> Solid(int width, int height, Rgba32 color)
         => new(width, height, color);
 
+    // ⚠ SEUL POINT À ADAPTER si le nom ou la signature de la méthode change.
+    private static Image<Rgba32> Apply(Image<Rgba32> photo, Image watermark, float opacity, PlacementMode mode)
+        => (Image<Rgba32>)photo.ApplyWatermark(watermark, new WatermarkOptions(opacity, mode));
+
     private static int Red(Image<Rgba32> image, int x, int y) => image[x, y].R;
 
     private static void AssertNear(double expected, int actual, double tolerance = 1.0)
-        => Assert.IsLessThanOrEqualTo(tolerance, Math.Abs(expected - actual), $"attendu ≈ {expected}, obtenu {actual}");
+        => Assert.IsLessThanOrEqualTo(tolerance,
+Math.Abs(expected - actual), $"attendu ≈ {expected}, obtenu {actual}");
 
     // ------------------------------------------------------------------
     // 1. Le mélange, calculé à la main
@@ -35,33 +43,35 @@ public class ImageProcessorTests
         using var photo = Solid(100, 100, White);
         using var watermark = Solid(10, 10, Black);
 
-        photo.ApplyWatermark(watermark, new WatermarkOptions(0.3f, PlacementMode.Corner));
+        using var result = Apply(photo, watermark, 0.3f, PlacementMode.Corner);
 
         // Dans le rectangle (coins inclus)
-        AssertNear(178.5, Red(photo, 5, 80));
-        AssertNear(178.5, Red(photo, 19, 94));
-        AssertNear(178.5, Red(photo, 10, 85));
+        AssertNear(178.5, Red(result, 5, 80));
+        AssertNear(178.5, Red(result, 19, 94));
+        AssertNear(178.5, Red(result, 10, 85));
 
         // Juste à l'extérieur : inchangé
-        Assert.AreEqual(255, Red(photo, 4, 80));
-        Assert.AreEqual(255, Red(photo, 5, 79));
-        Assert.AreEqual(255, Red(photo, 20, 94));
-        Assert.AreEqual(255, Red(photo, 5, 95));
-        Assert.AreEqual(255, Red(photo, 50, 50));
+        Assert.AreEqual(255, Red(result, 4, 80));
+        Assert.AreEqual(255, Red(result, 5, 79));
+        Assert.AreEqual(255, Red(result, 20, 94));
+        Assert.AreEqual(255, Red(result, 5, 95));
+        Assert.AreEqual(255, Red(result, 50, 50));
     }
 
+    // Piège classique : lire les pixels de `photo` au lieu de `result`.
+    // La source n'est pas modifiée, elle resterait blanche (255) et le test « 1 → noir » échouerait.
     [TestMethod]
     public void Opacite_1_donne_le_noir_et_opacite_0_ne_change_rien()
     {
+        using var photo = Solid(100, 100, White);
         using var watermark = Solid(10, 10, Black);
 
-        using var opaque = Solid(100, 100, White);
-        opaque.ApplyWatermark(watermark, new WatermarkOptions(1f, PlacementMode.Corner));
-        Assert.AreEqual(0, Red(opaque, 10, 85));
+        // Une seule photo suffit : elle n'est jamais modifiée.
+        using var opaque = Apply(photo, watermark, 1f, PlacementMode.Corner);
+        using var invisible = Apply(photo, watermark, 0f, PlacementMode.Corner);
 
-        using var invisible = Solid(100, 100, White);
-        invisible.ApplyWatermark(watermark, new WatermarkOptions(0f, PlacementMode.Corner));
-        Assert.AreEqual(255, Red(invisible, 10, 85));
+        Assert.AreEqual(0, Red(opaque, 10, 85), "Opacité 1 : le pixel devrait être noir.");
+        Assert.AreEqual(255, Red(invisible, 10, 85), "Opacité 0 : le pixel devrait rester blanc.");
     }
 
     // ------------------------------------------------------------------
@@ -75,9 +85,9 @@ public class ImageProcessorTests
         using var photo = Solid(100, 100, White);
         using var watermark = Solid(10, 10, new Rgba32(0, 0, 0, 128));
 
-        photo.ApplyWatermark(watermark, new WatermarkOptions(0.5f, PlacementMode.Corner));
+        using var result = Apply(photo, watermark, 0.5f, PlacementMode.Corner);
 
-        AssertNear(191, Red(photo, 10, 85), tolerance: 2);
+        AssertNear(191, Red(result, 10, 85), tolerance: 2);
     }
 
     [TestMethod]
@@ -86,13 +96,13 @@ public class ImageProcessorTests
         using var photo = Solid(100, 100, White);
         using var watermark = Solid(10, 10, new Rgba32(0, 0, 0, 0));
 
-        photo.ApplyWatermark(watermark, new WatermarkOptions(1f, PlacementMode.Corner));
+        using var result = Apply(photo, watermark, 1f, PlacementMode.Corner);
 
-        Assert.AreEqual(255, Red(photo, 10, 85));
+        Assert.AreEqual(255, Red(result, 10, 85));
     }
 
     // ------------------------------------------------------------------
-    // 3. Le watermark partagé n'est ni modifié ni libéré
+    // 3. Ce qui ne doit JAMAIS être modifié : le watermark partagé et la source
     // ------------------------------------------------------------------
     [TestMethod]
     public void Le_watermark_n_est_pas_modifie()
@@ -100,12 +110,32 @@ public class ImageProcessorTests
         using var photo = Solid(100, 100, White);
         using var watermark = Solid(10, 10, Black);
 
-        photo.ApplyWatermark(watermark, new WatermarkOptions(0.3f, PlacementMode.Corner));
+        using var result = Apply(photo, watermark, 0.3f, PlacementMode.Corner);
 
         // Si le watermark avait été redimensionné ou libéré, ceci échouerait.
         Assert.AreEqual(10, watermark.Width);
         Assert.AreEqual(10, watermark.Height);
         Assert.AreEqual(0, Red(watermark, 5, 5));
+    }
+
+    [TestMethod]
+    public void La_source_n_est_pas_modifiee()
+    {
+        using var photo = Solid(100, 60, White);
+        photo.Metadata.ExifProfile = new ExifProfile();
+        photo.Metadata.ExifProfile.SetValue(ExifTag.Orientation, (ushort)6);
+        using var watermark = Solid(10, 10, Black);
+
+        using var result = Apply(photo, watermark, 1f, PlacementMode.Wide);
+
+        Assert.AreNotSame(photo, result);
+        // Taille, pixels et balise d'orientation de la source : intacts.
+        Assert.AreEqual(100, photo.Width);
+        Assert.AreEqual(60, photo.Height);
+        Assert.AreEqual(255, Red(photo, 50, 30));
+        var orientation = photo.Metadata.ExifProfile!.GetValue(ExifTag.Orientation);
+        Assert.IsNotNull(orientation);
+        Assert.AreEqual((ushort)6, orientation!.Value);
     }
 
     // ------------------------------------------------------------------
@@ -124,15 +154,46 @@ public class ImageProcessorTests
         photo.Metadata.ExifProfile.SetValue(ExifTag.Orientation, (ushort)6);
         using var watermark = Solid(10, 10, Black);
 
-        photo.ApplyWatermark(watermark, new WatermarkOptions(1f, PlacementMode.Wide));
+        using var result = Apply(photo, watermark, 1f, PlacementMode.Wide);
 
-        Assert.AreEqual(60, photo.Width);
-        Assert.AreEqual(100, photo.Height);
+        Assert.AreEqual(60, result.Width);
+        Assert.AreEqual(100, result.Height);
 
-        Assert.AreEqual(0, Red(photo, 5, 50));     // bande centrale, côté gauche
-        Assert.AreEqual(0, Red(photo, 55, 50));    // bande centrale, côté droit
-        Assert.AreEqual(255, Red(photo, 30, 5));   // bande haute : inchangée
-        Assert.AreEqual(255, Red(photo, 30, 95));  // bande basse : inchangée
+        Assert.AreEqual(0, Red(result, 5, 50));     // bande centrale, côté gauche
+        Assert.AreEqual(0, Red(result, 55, 50));    // bande centrale, côté droit
+        Assert.AreEqual(255, Red(result, 30, 5));   // bande haute : inchangée
+        Assert.AreEqual(255, Red(result, 30, 95));  // bande basse : inchangée
+    }
+
+    // ------------------------------------------------------------------
+    // 5. Métadonnées
+    //
+    //    « Conservées » et « orientation réinitialisée » ne se contredisent pas :
+    //    - toutes les métadonnées qui DÉCRIVENT la photo (appareil, date, GPS, réglages…)
+    //      sont conservées telles quelles ;
+    //    - la balise d'orientation est une INSTRUCTION D'AFFICHAGE (« pivote-moi »).
+    //      Une fois les pixels pivotés par AutoOrient, la garder ferait pivoter la
+    //      photo une seconde fois : on la remet donc à « normal » (1).
+    // ------------------------------------------------------------------
+    [TestMethod]
+    public void Les_metadonnees_survivent_a_l_application_et_a_un_aller_retour_JPEG()
+    {
+        using var photo = Solid(100, 100, White);
+        photo.Metadata.ExifProfile = new ExifProfile();
+        photo.Metadata.ExifProfile.SetValue(ExifTag.Make, "TestCam");
+        using var watermark = Solid(10, 10, Black);
+
+        using var result = Apply(photo, watermark, 0.3f, PlacementMode.Corner);
+
+        using var stream = new MemoryStream();
+        result.SaveAsJpeg(stream);
+        stream.Position = 0;
+        using var reloaded = Image.Load(stream);
+
+        Assert.IsNotNull(reloaded.Metadata.ExifProfile, "Profil EXIF perdu.");
+        var make = reloaded.Metadata.ExifProfile!.GetValue(ExifTag.Make);
+        Assert.IsNotNull(make, "Tag make perdu");
+        Assert.AreEqual("TestCam", make!.Value);
     }
 
     [TestMethod]
@@ -143,44 +204,42 @@ public class ImageProcessorTests
         photo.Metadata.ExifProfile.SetValue(ExifTag.Orientation, (ushort)6);
         using var watermark = Solid(10, 10, Black);
 
-        photo.ApplyWatermark(watermark, new WatermarkOptions(1f, PlacementMode.Wide));
+        using var result = Apply(photo, watermark, 1f, PlacementMode.Wide);
 
-        // Sinon la photo serait pivotée une seconde fois à l'affichage.
-        var exif = photo.Metadata.ExifProfile;
-        var orientation = exif.GetValue(ExifTag.Orientation);
+        var exif = result.Metadata.ExifProfile;
         bool reset = exif is null
-            || orientation is null
-            || orientation!.Value == 1;
+            || exif.GetValue(ExifTag.Orientation) == null
+            || exif.GetValue(ExifTag.Orientation).Value == 1;
         Assert.IsTrue(reset, "La balise d'orientation doit valoir 1 (ou être absente).");
     }
 
-    // ------------------------------------------------------------------
-    // 5. Métadonnées : conservées, y compris après un aller-retour JPEG
-    //    (ce test vérifie surtout le comportement d'ImageSharp)
-    // ------------------------------------------------------------------
+    // Le test qui montre les deux règles ensemble : une photo avec un tag « Make » ET une
+    // orientation. Après traitement, Make est intact, seule l'orientation a changé.
     [TestMethod]
-    public void Les_metadonnees_survivent_a_l_application_et_a_un_aller_retour_JPEG()
+    public void Seule_l_orientation_change_parmi_les_metadonnees()
     {
-        using var photo = Solid(100, 100, White);
+        using var photo = Solid(100, 60, White);
         photo.Metadata.ExifProfile = new ExifProfile();
         photo.Metadata.ExifProfile.SetValue(ExifTag.Make, "TestCam");
+        photo.Metadata.ExifProfile.SetValue(ExifTag.Orientation, (ushort)6);
         using var watermark = Solid(10, 10, Black);
 
-        photo.ApplyWatermark(watermark, new WatermarkOptions(0.3f, PlacementMode.Corner));
+        using var result = Apply(photo, watermark, 0.3f, PlacementMode.Corner);
 
-        using var stream = new MemoryStream();
-        photo.SaveAsJpeg(stream);
-        stream.Position = 0;
-        using var reloaded = Image.Load(stream);
-
-        Assert.IsNotNull(reloaded.Metadata.ExifProfile, "Profil EXIF perdu.");
-        var make = reloaded.Metadata.ExifProfile.GetValue(ExifTag.Make);
+        var exif = result.Metadata.ExifProfile;
+        Assert.IsNotNull(exif, "Profil EXIF perdu.");
+        var make = exif.GetValue(ExifTag.Make);
         Assert.IsNotNull(make, "Tag Make perdu.");
         Assert.AreEqual("TestCam", make!.Value);
+
+        var orientation = exif.GetValue(ExifTag.Orientation);
+        bool orientationReset = orientation == null
+            || orientation!.Value == 1;
+        Assert.IsTrue(orientationReset, "L'orientation doit être réinitialisée.");
     }
 
     // ------------------------------------------------------------------
-    // 6. Validation (attendu ROUGE sur NaN et sur les null avec la version actuelle)
+    // 6. Validation
     // ------------------------------------------------------------------
     [TestMethod]
     [DataRow(-0.1f)]
@@ -192,7 +251,7 @@ public class ImageProcessorTests
         using var watermark = Solid(10, 10, Black);
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => { photo.ApplyWatermark(watermark, new WatermarkOptions(opacity)); });
+            () => { photo.ApplyWatermark(watermark, new WatermarkOptions(opacity)).Dispose(); });
     }
 
     [TestMethod]
@@ -203,10 +262,10 @@ public class ImageProcessorTests
         var options = new WatermarkOptions();
 
         Assert.Throws<ArgumentNullException>(
-            () => { ((Image)null!).ApplyWatermark(watermark, options); });
+            () => { ((Image)null!).ApplyWatermark(watermark, options).Dispose(); });
         Assert.Throws<ArgumentNullException>(
-            () => { photo.ApplyWatermark(null!, options); });
+            () => { photo.ApplyWatermark(null!, options).Dispose(); });
         Assert.Throws<ArgumentNullException>(
-            () => { photo.ApplyWatermark(watermark, null!); });
+            () => { photo.ApplyWatermark(watermark, null!).Dispose(); });
     }
 }
