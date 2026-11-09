@@ -37,7 +37,7 @@ namespace Watermarker.WinUI
             InitializeComponent();
 
             SystemBackdrop = new MicaBackdrop();                         // fond « Windows 11 »
-            AppWindow.Resize(new Windows.Graphics.SizeInt32(900, 860));  // taille initiale
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(1080, 900));  // taille initiale
         }
     }
 }

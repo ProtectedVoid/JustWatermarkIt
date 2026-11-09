@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using Watermarker.Library;
+using Watermarker.ViewModels.DTO;
 using Watermarker.ViewModels.Services;
 
 namespace Watermarker.ViewModels.ViewModels
@@ -64,7 +65,7 @@ namespace Watermarker.ViewModels.ViewModels
         [ObservableProperty]
         private string _progressText = "";
 
-        public ObservableCollection<FileResult> Results { get; } = [];
+        public ObservableCollection<ResultItem> Results { get; } = [];
 
         // Propriétés calculées, lues par la page
         public bool IsNotRunning => !IsRunning;
@@ -147,7 +148,7 @@ namespace Watermarker.ViewModels.ViewModels
                 // ⚠ À ADAPTER : le nom de ta classe qui contient RunAsync.
                 var results = await Task.Run(() => BatchProcessor.RunAsync(request, progress, token));
 
-                foreach (var result in results) Results.Add(result);
+                foreach (var result in results) Results.Add(new ResultItem(result));
                 ProgressText = Summarize(results, token.IsCancellationRequested);
             }
             catch (Exception ex)
@@ -181,7 +182,7 @@ namespace Watermarker.ViewModels.ViewModels
             int skipped = results.Count(r => r.Status == FileStatus.Skipped);
             int failed = results.Count(r => r.Status == FileStatus.Failed);
 
-            var text = $"{results.Count} fichier(s) : {ok} traité(s), {warnings} avertissement(s), {skipped} ignoré(s), {failed} en erreur.";
+            var text = $"{ok} OK, {warnings} avertissement(s), {skipped} ignoré(s), {failed} en erreur.";
             return cancelled ? "Annulé. " + text : text;
         }
     }
