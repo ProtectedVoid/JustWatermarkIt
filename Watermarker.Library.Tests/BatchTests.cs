@@ -4,6 +4,7 @@ using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
+using Watermarker.Library.Exceptions;
 
 namespace Watermarker.Library.Tests;
 
@@ -72,7 +73,7 @@ public class BatchTests
         => Directory.Exists(folder) ? Directory.GetFiles(folder).Length : 0;
 
     private static string Describe(IEnumerable<FileResult> results)
-        => string.Join(" | ", results.Select(r => $"{Path.GetFileName(r.SourceFile)}: {r.Status} ({r.Message})"));
+        => string.Join(" | ", results.Select(r => $"{Path.GetFileName(r.SourceFile)}: {r.Status} ({r.Details})"));
 
     private static FileResult Of(IEnumerable<FileResult> results, string fileName)
         => results.Single(r => Path.GetFileName(r.SourceFile) == fileName);
@@ -186,7 +187,7 @@ public class BatchTests
 
         var result = results.Single();
         Assert.AreEqual(FileStatus.Warning, result.Status, "Traité, mais original non déplacé : avertissement.");
-        Assert.IsFalse(string.IsNullOrWhiteSpace(result.Message), "Un message doit expliquer pourquoi l'original n'a pas bougé.");
+        Assert.AreEqual(FileMessageCode.SourceAlreadyExists, result.Result, "Le code de sortie doit indoquer le cas spécifique 'non déplacé car existe déjà'");
         Assert.IsTrue(File.Exists(Path.Combine(Src, "a.jpg")));
         Assert.AreEqual("marqueur", File.ReadAllText(Path.Combine(Orig, "a.jpg")));
         Assert.IsTrue(File.Exists(Path.Combine(Dst, "a.jpg")));
@@ -220,7 +221,7 @@ public class BatchTests
 
         var bad = Of(results, "bad.jpg");
         Assert.AreEqual(FileStatus.Failed, bad.Status);
-        Assert.IsFalse(string.IsNullOrWhiteSpace(bad.Message));
+        Assert.IsFalse(string.IsNullOrWhiteSpace(bad.Details));
         Assert.AreEqual(FileStatus.Success, Of(results, "good.jpg").Status);
 
         Assert.IsTrue(File.Exists(Path.Combine(Dst, "good.jpg")));
@@ -268,7 +269,7 @@ public class BatchTests
     [TestMethod]
     public async Task Dossier_source_inexistant_leve_DirectoryNotFoundException()
     {
-        await Assert.ThrowsAsync<DirectoryNotFoundException>(
+        await Assert.ThrowsAsync<BatchValidationException>(
             async () => await Run(Request(source: Path.Combine(_root, "absent")), token: TestContext.CancellationToken));
     }
 
@@ -278,7 +279,7 @@ public class BatchTests
         CreatePhoto("a.jpg");
         var request = Request() with { WatermarkFile = Path.Combine(_root, "absent.png") };
 
-        await Assert.ThrowsAsync<FileNotFoundException>(async () => await Run(request, token: TestContext.CancellationToken));
+        await Assert.ThrowsAsync<BatchValidationException>(async () => await Run(request, token: TestContext.CancellationToken));
     }
 
     [TestMethod]
@@ -299,7 +300,7 @@ public class BatchTests
         CreatePhoto("a.jpg");
         var before = File.ReadAllBytes(Path.Combine(Src, "a.jpg"));
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<BatchValidationException>(
             async () => await Run(Request(rename: false, destination: Src), token: TestContext.CancellationToken));
 
         CollectionAssert.AreEqual(before, File.ReadAllBytes(Path.Combine(Src, "a.jpg")));
@@ -311,7 +312,7 @@ public class BatchTests
         CreatePhoto("a.jpg");
 
         // « src » et « src/ » désignent le même dossier.
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<BatchValidationException>(
             async () => await Run(Request(rename: false, destination: Src + Path.DirectorySeparatorChar), token: TestContext.CancellationToken));
     }
 
@@ -320,7 +321,7 @@ public class BatchTests
     {
         CreatePhoto("a.jpg");
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<BatchValidationException>(
             async () => await Run(Request(originals: Src), token: TestContext.CancellationToken));
     }
 
@@ -329,7 +330,7 @@ public class BatchTests
     {
         CreatePhoto("a.jpg");
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<BatchValidationException>(
             async () => await Run(Request(originals: Dst), token: TestContext.CancellationToken));
     }
 
@@ -340,7 +341,7 @@ public class BatchTests
     {
         CreatePhoto("a.jpg");
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<BatchValidationException>(
             async () => await Run(Request(rename: true, destination: Src), token: TestContext.CancellationToken));
     }
 
@@ -349,7 +350,7 @@ public class BatchTests
     {
         CreatePhoto("a.jpg");
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+        await Assert.ThrowsAsync<BatchValidationException>(
             async () => await Run(Request(opacity: 2f), token: TestContext.CancellationToken));
 
         Assert.AreEqual(0, CountFiles(Dst));

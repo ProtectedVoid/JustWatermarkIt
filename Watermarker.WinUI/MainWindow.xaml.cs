@@ -32,7 +32,7 @@ namespace Watermarker.WinUI
         {
             // ⚠ Le ViewModel doit exister AVANT InitializeComponent() :
             // c'est à cet appel que les liaisons {x:Bind} lisent leurs valeurs initiales.
-            ViewModel = new MainWindowViewModel(new PickerService(this));
+            ViewModel = new MainWindowViewModel(new PickerService(this), new FileMessageCodeTranslateService());
 
             InitializeComponent();
 

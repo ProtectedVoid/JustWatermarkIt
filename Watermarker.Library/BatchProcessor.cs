@@ -1,16 +1,22 @@
 ﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text;
+using Watermarker.Library.Exceptions;
 
 namespace Watermarker.Library
 {
+    
+
+    public enum FileMessageCode { Processed, TargetAlreadyExists, SourceAlreadyExists, SourceNotMoved, Cancelled, Failed }
+
     public sealed record BatchRequest(string SourceFolder, string WatermarkFile, WatermarkOptions Options, string DestinationFolder, bool RenameOutputs, string? OriginalsFolder);
 
     public enum FileStatus { Success, Skipped, Failed, Warning }
 
-    public sealed record FileResult(string SourceFile, FileStatus Status, string? OutputFile = null, string? Message = null);
+    public sealed record FileResult(string SourceFile, FileStatus Status, FileMessageCode Result, string? OutputFile = null, string? Details = null);
 
     public sealed record BatchProgress(int Current, int Total, string FileName);
 
@@ -24,39 +30,26 @@ namespace Watermarker.Library
         {
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(progress);
-            ArgumentOutOfRangeException.ThrowIfLessThan(request.Options.Opacity, 0);
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(request.Options.Opacity, 1);
+
+            BatchValidationException.ThrowIf(request.Options.Opacity < 0 || request.Options.Opacity > 1, BatchValidationError.InvalidOpacity);
 
             // Erreur si le watermark n'existe pas
-            if (!File.Exists(request.WatermarkFile))
-            {
-                throw new FileNotFoundException($"Le fichier {request.WatermarkFile} n'existe pas");
-            }
-            if (!IsAcceptedImage(request.WatermarkFile))
-            {
-                throw new ArgumentException($"Le watermark choisi n'a pas une extension valide (Formats acceptés : {string.Join(',', ACCEPTED_FORMATS)}");
-            }
+            BatchValidationException.ThrowIf(!File.Exists(request.WatermarkFile), BatchValidationError.WatermarkNotFound);
+
+            BatchValidationException.ThrowIf(!IsAcceptedImage(request.WatermarkFile), BatchValidationError.InvalidWatermarkFormat);
+            
             using var watermark = Image.Load(request.WatermarkFile);
 
             // Erreur si le dossier source n'existe pas
-            if (!Directory.Exists(request.SourceFolder))
-            {
-                throw new DirectoryNotFoundException($"Le dossier {request.SourceFolder} n'existe pas");
-            }
+            BatchValidationException.ThrowIf(!Directory.Exists(request.SourceFolder), BatchValidationError.SourceFolderNotFound);
 
             // Erreur si deux dossiers sont identiques
-            if (string.Compare(Path.TrimEndingDirectorySeparator(request.SourceFolder), Path.TrimEndingDirectorySeparator(request.DestinationFolder)) == 0)
-            {
-                throw new ArgumentException("Le dossier cible doit être différent du dossier source");
-            }
-            if (!string.IsNullOrWhiteSpace(request.OriginalsFolder) && string.Compare(Path.TrimEndingDirectorySeparator(request.SourceFolder), Path.TrimEndingDirectorySeparator(request.OriginalsFolder)) == 0)
-            {
-                throw new ArgumentException("Le dossier des originaux doit être différent du dossier source");
-            }
-            if (!string.IsNullOrWhiteSpace(request.OriginalsFolder) && string.Compare(Path.TrimEndingDirectorySeparator(request.DestinationFolder), Path.TrimEndingDirectorySeparator(request.OriginalsFolder)) == 0)
-            {
-                throw new ArgumentException("Le dossier des originaux doit être différent du dossier cible");
-            }
+            BatchValidationException.ThrowIf(string.Compare(Path.TrimEndingDirectorySeparator(request.SourceFolder), Path.TrimEndingDirectorySeparator(request.DestinationFolder)) == 0, BatchValidationError.DestinationSameAsSource);
+
+            BatchValidationException.ThrowIf(!string.IsNullOrWhiteSpace(request.OriginalsFolder) && string.Compare(Path.TrimEndingDirectorySeparator(request.SourceFolder), Path.TrimEndingDirectorySeparator(request.OriginalsFolder)) == 0,BatchValidationError.NewOriginalsSameAsSource);
+
+            BatchValidationException.ThrowIf(!string.IsNullOrWhiteSpace(request.OriginalsFolder) && string.Compare(Path.TrimEndingDirectorySeparator(request.DestinationFolder), Path.TrimEndingDirectorySeparator(request.OriginalsFolder)) == 0, BatchValidationError.NewOriginalsSameAsDestination);
+            
             var fileList = Directory.GetFiles(request.SourceFolder)
                 .Where(IsAcceptedImage)
                 .ToList();
@@ -79,7 +72,7 @@ namespace Watermarker.Library
                 progress.Report(new BatchProgress(++fileCount, fileList.Count, file));
                 if (token.IsCancellationRequested)
                 {
-                    fileResults.Add(new FileResult(file, FileStatus.Skipped, null, "L'opération a été annulée"));
+                    fileResults.Add(new FileResult(file, FileStatus.Skipped, FileMessageCode.Cancelled));
                     continue;
                 }
 
@@ -88,7 +81,7 @@ namespace Watermarker.Library
                 var targetTempFile = Path.Combine(request.DestinationFolder, $"tmp_{newName}");
                 if (File.Exists(targetFile))
                 {
-                    fileResults.Add(new FileResult(file, FileStatus.Skipped, targetFile, "Le fichier existe déjà dans la destination"));
+                    fileResults.Add(new FileResult(file, FileStatus.Skipped, FileMessageCode.TargetAlreadyExists, targetFile));
                     continue;
                 }
 
@@ -104,29 +97,29 @@ namespace Watermarker.Library
                         var targetSource = Path.Combine(request.OriginalsFolder, Path.GetFileName(file));
                         if (File.Exists(targetSource))
                         {
-                            fileResults.Add(new FileResult(file, FileStatus.Warning, targetFile, "La source n'a pas été déplacée car un fichier de même nom existe déjà"));
+                            fileResults.Add(new FileResult(file, FileStatus.Warning, FileMessageCode.SourceAlreadyExists, targetFile));
                         }
                         else
                         {
                             try
                             {
                                 File.Move(file, targetSource);
-                                fileResults.Add(new FileResult(file, FileStatus.Success, targetFile, "Fichier traité avec succès"));
+                                fileResults.Add(new FileResult(file, FileStatus.Success, FileMessageCode.Processed, targetFile));
                             }
                             catch (Exception e)
                             {
-                                fileResults.Add(new FileResult(file, FileStatus.Warning, targetFile, $"La source n'a pas été déplacée : {e.Message}"));
+                                fileResults.Add(new FileResult(file, FileStatus.Warning, FileMessageCode.SourceNotMoved, targetFile, e.Message));
                             }
                         }
                     }
                     else
                     {
-                        fileResults.Add(new FileResult(file, FileStatus.Success, targetFile, "Fichier traité avec succès"));
+                        fileResults.Add(new FileResult(file, FileStatus.Success, FileMessageCode.Processed, targetFile));
                     }
                 }
                 catch (Exception e)
                 {
-                    fileResults.Add(new FileResult(file, FileStatus.Failed, null, e.Message));
+                    fileResults.Add(new FileResult(file, FileStatus.Failed, FileMessageCode.Failed, null, e.Message));
                     continue;
                 }
             }

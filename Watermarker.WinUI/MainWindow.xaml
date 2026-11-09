@@ -67,40 +67,38 @@
                                     <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Fichiers" />
 
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Photos à traiter" />
+                                        <TextBlock x:Uid="SourceFolderLabel" />
                                         <Grid ColumnSpacing="8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" IsReadOnly="True"
-                                                     PlaceholderText="Choisir le dossier des photos"
+                                            <TextBox Grid.Column="0" IsReadOnly="True" x:Uid="SourceFolderValue"
                                                      Text="{x:Bind ViewModel.SourceFolder, Mode=OneWay}" />
-                                            <Button Grid.Column="1" Content="Choisir…"
+                                            <Button Grid.Column="1" x:Uid="SourceFolderButton"
                                                     Command="{x:Bind ViewModel.PickSourceFolderCommand}" />
                                         </Grid>
                                     </StackPanel>
 
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Dossier de sortie" />
+                                        <TextBlock x:Uid="DestinationFolderLabel" />
                                         <Grid ColumnSpacing="8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" IsReadOnly="True"
-                                                     PlaceholderText="Choisir le dossier de sortie"
+                                            <TextBox Grid.Column="0" IsReadOnly="True" x:Uid="DestinationFolderValue"
                                                      Text="{x:Bind ViewModel.DestinationFolder, Mode=OneWay}" />
-                                            <Button Grid.Column="1" Content="Choisir…"
+                                            <Button Grid.Column="1" x:Uid="DestinationFolderButton"
                                                     Command="{x:Bind ViewModel.PickDestinationFolderCommand}" />
                                         </Grid>
                                     </StackPanel>
 
-                                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Options" />
+                                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" x:Uid="OptionsLabel" />
 
-                                    <CheckBox Content="Renommer les fichiers (w_[nom])"
+                                    <CheckBox x:Uid="RenameFilesCheckbox"
                                         IsChecked="{x:Bind ViewModel.RenameOutputs, Mode=TwoWay}" />
-                                    <CheckBox Content="Déplacer les originaux après traitement"
+                                    <CheckBox x:Uid="MoveSourcesCheckbox"
                                         IsChecked="{x:Bind ViewModel.MoveOriginals, Mode=TwoWay}" />
 
                                     <Grid ColumnSpacing="8" Margin="28,0,0,0">
@@ -109,10 +107,9 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0" IsReadOnly="True"
-                                            IsEnabled="{x:Bind ViewModel.MoveOriginals, Mode=OneWay}"
-                                            PlaceholderText="Choisir le dossier des originaux"
+                                            IsEnabled="{x:Bind ViewModel.MoveOriginals, Mode=OneWay}" x:Uid="NewSourceDestinationValue"
                                             Text="{x:Bind ViewModel.OriginalsFolder, Mode=OneWay}" />
-                                        <Button Grid.Column="1" Content="Choisir…"
+                                        <Button Grid.Column="1" x:Uid="NewSourceDestinationButton"
                                             IsEnabled="{x:Bind ViewModel.MoveOriginals, Mode=OneWay}"
                                             Command="{x:Bind ViewModel.PickOriginalsFolderCommand}" />
                                     </Grid>
@@ -122,34 +119,32 @@
                             <!-- =============== Carte 2 : Apparence du watermark =============== -->
                             <Border Style="{StaticResource CardStyle}">
                                 <StackPanel Spacing="12">
-                                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Paramètre du watermark" />
+                                    <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" x:Uid="WatermarkSettingsLabel" />
 
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Watermark" />
+                                        <TextBlock x:Uid="WatermarkLabel" />
                                         <Grid ColumnSpacing="8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" IsReadOnly="True"
-                                                PlaceholderText="Choisir l'image du watermark"
+                                            <TextBox Grid.Column="0" IsReadOnly="True" x:Uid="WatermarkFileValue"
                                                 Text="{x:Bind ViewModel.WatermarkFile, Mode=OneWay}" />
-                                            <Button Grid.Column="1" Content="Choisir…"
+                                            <Button Grid.Column="1" x:Uid="WatermarkFileButton"
                                                 Command="{x:Bind ViewModel.PickWatermarkFileCommand}" />
                                         </Grid>
-                                        <TextBlock FontSize="12"
-                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                            Text="Un PNG avec fond transparent donne le meilleur résultat." />
+                                        <TextBlock FontSize="12" x:Uid="WatermarkFileAdviceLabel" TextWrapping="WrapWholeWords"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     </StackPanel>
 
                                     <StackPanel Spacing="4">
-                                        <TextBlock Text="Opacité" />
+                                        <TextBlock Text="Opacité" x:Uid="OpacityLabel" />
                                         <Grid ColumnSpacing="12">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="56" />
                                             </Grid.ColumnDefinitions>
-                                            <Slider Grid.Column="0" Minimum="0" Maximum="100" StepFrequency="1"
+                                            <Slider Grid.Column="0" Minimum="0" Maximum="100" StepFrequency="1" 
                                                     Value="{x:Bind ViewModel.OpacityPercent, Mode=TwoWay}" />
                                             <TextBlock Grid.Column="1" VerticalAlignment="Center"
                                                        Text="{x:Bind ViewModel.OpacityLabel, Mode=OneWay}" />
@@ -158,8 +153,8 @@
 
                                     <RadioButtons Header="Mode" MaxColumns="2"
                                                   SelectedIndex="{x:Bind ViewModel.ModeIndex, Mode=TwoWay}">
-                                        <x:String>Large</x:String>
-                                        <x:String>Coin</x:String>
+                                        <RadioButton x:Uid="ModeLarge" />
+                                        <RadioButton x:Uid="ModeCorner" />
                                     </RadioButtons>
                                 </StackPanel>
                             </Border>
@@ -168,10 +163,9 @@
 
                     <!-- Boutons d'action : hors du ContentControl, donc « Annuler » reste actif pendant le traitement -->
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Style="{StaticResource AccentButtonStyle}"
-                                Content="Lancer le traitement"
+                        <Button Style="{StaticResource AccentButtonStyle}" x:Uid="StartProcessButton"
                                 Command="{x:Bind ViewModel.StartCommand}" />
-                        <Button Content="Annuler"
+                        <Button x:Uid="CancelButton"
                                 Command="{x:Bind ViewModel.CancelCommand}" />
                     </StackPanel>
                 </StackPanel>
@@ -189,7 +183,7 @@
                 <!-- ============ Carte : Progression ============== -->
                 <Border Grid.Row="0" Style="{StaticResource CardStyle}">
                     <StackPanel Spacing="8">
-                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Progression" />
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" x:Uid="ProgressLabel" />
                         <ProgressBar Minimum="0" Maximum="100"
                                      Value="{x:Bind ViewModel.ProgressValue, Mode=OneWay}" />
                         <TextBlock FontSize="12"
@@ -206,7 +200,7 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Style="{StaticResource BodyStrongTextBlockStyle}" Text="Résultats" />
+                        <TextBlock Grid.Row="0" Style="{StaticResource BodyStrongTextBlockStyle}" x:Uid="ResultsLabel" />
 
                         <ListView Grid.Row="1" SelectionMode="None"
                                   ItemsSource="{x:Bind ViewModel.Results}">

@@ -10,9 +10,14 @@ namespace Watermarker.ViewModels.ViewModels
     public partial class MainWindowViewModel : ObservableObject
     {
         private readonly IPickerService _picker;
+        private readonly IFileMessageCodeTranslateService _fileMessageCodeTranslate;
         private CancellationTokenSource? _cts;
 
-        public MainWindowViewModel(IPickerService picker) => _picker = picker;
+        public MainWindowViewModel(IPickerService picker, IFileMessageCodeTranslateService translator)
+        {
+            _picker = picker;
+            _fileMessageCodeTranslate = translator;
+        }
 
         // ------------------------------------------------------------------
         // Propriétés reliées au formulaire
@@ -118,7 +123,7 @@ namespace Watermarker.ViewModels.ViewModels
         {
             Results.Clear();
             ProgressValue = 0;
-            ProgressText = "Préparation…";
+            ProgressText = _fileMessageCodeTranslate.Get("ProgressText_Preparing");
             IsRunning = true;
 
             _cts = new CancellationTokenSource();
@@ -140,7 +145,7 @@ namespace Watermarker.ViewModels.ViewModels
                 var progress = new Progress<BatchProgress>(p =>
                 {
                     if (p.Total > 0) ProgressValue = 100.0 * p.Current / p.Total;
-                    ProgressText = $"Fichier {p.Current} / {p.Total} : {Path.GetFileName(p.FileName)}";
+                    ProgressText = _fileMessageCodeTranslate.Format("ProgressText_Processing", p.Current, p.Total, Path.GetFileName(p.FileName));
                 });
 
                 // Task.Run : le traitement des images est du calcul lourd. Sans lui, il bloquerait
@@ -154,7 +159,7 @@ namespace Watermarker.ViewModels.ViewModels
             catch (Exception ex)
             {
                 // Erreurs levées AVANT de toucher aux fichiers (dossier absent, watermark illisible, dossiers identiques…)
-                ProgressText = $"Impossible de lancer le traitement : {ex.Message}";
+                ProgressText = _fileMessageCodeTranslate.Format("ProgressText_CantLaunchProcess", ex.Message);
             }
             finally
             {
@@ -169,21 +174,21 @@ namespace Watermarker.ViewModels.ViewModels
         [RelayCommand(CanExecute = nameof(CanCancel))]
         private void Cancel()
         {
-            ProgressText = "Annulation en cours…";
+            ProgressText = _fileMessageCodeTranslate.Get("ProgressText_Cancelling");
             _cts?.Cancel();
         }
 
-        private static string Summarize(IReadOnlyList<FileResult> results, bool cancelled)
+        private string Summarize(IReadOnlyList<FileResult> results, bool cancelled)
         {
-            if (results.Count == 0) return "Aucune image trouvée dans le dossier source.";
+            if (results.Count == 0) return _fileMessageCodeTranslate.Get("Summary_NoContent");
 
             int ok = results.Count(r => r.Status == FileStatus.Success);
             int warnings = results.Count(r => r.Status == FileStatus.Warning);
             int skipped = results.Count(r => r.Status == FileStatus.Skipped);
             int failed = results.Count(r => r.Status == FileStatus.Failed);
 
-            var text = $"{ok} OK, {warnings} avertissement(s), {skipped} ignoré(s), {failed} en erreur.";
-            return cancelled ? "Annulé. " + text : text;
+            var text = _fileMessageCodeTranslate.Format("Summary_Done", ok, warnings, skipped, failed);
+            return cancelled ? _fileMessageCodeTranslate.Format("Summary_Cancelled", text) : text;
         }
     }
 }

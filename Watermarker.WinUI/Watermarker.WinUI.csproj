@@ -64,4 +64,20 @@
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <PRIResource Remove="Strings\en-US\Resources.resw" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Strings\en-US\Resources.resw">
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <Generator>ResXFileCodeGenerator</Generator>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Strings\fr-FR\Resources.resw">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <PRIResource Remove="Strings\fr-FR\Resources.resw" />
+  </ItemGroup>
 </Project>
