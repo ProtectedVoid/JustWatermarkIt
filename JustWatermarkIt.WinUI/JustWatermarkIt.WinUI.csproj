@@ -66,20 +66,4 @@
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
     <DefaultLanguage>en</DefaultLanguage>
   </PropertyGroup>
-  <ItemGroup>
-    <PRIResource Remove="Strings\en\Resources.resw" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Strings\en\Resources.resw">
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <Generator>ResXFileCodeGenerator</Generator>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Strings\fr\Resources.resw">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <PRIResource Remove="Strings\fr\Resources.resw" />
-  </ItemGroup>
 </Project>
