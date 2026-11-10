@@ -1,0 +1,14 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using JustWatermarkIt.Library;
+
+namespace JustWatermarkIt.ViewModels.DTO
+{
+    public sealed class ResultItem(FileResult result)
+    {
+        public string FileName { get; } = Path.GetFileName(result.SourceFile);
+        public string Message { get; } = result.Details ?? "";
+        public FileStatus Status { get; } = result.Status;
+    }
+}

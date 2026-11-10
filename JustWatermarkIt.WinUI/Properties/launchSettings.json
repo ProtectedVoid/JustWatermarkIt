@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "JustWatermarkIt.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "JustWatermarkIt.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
