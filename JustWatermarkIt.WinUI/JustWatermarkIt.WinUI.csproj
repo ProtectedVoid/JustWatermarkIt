@@ -64,21 +64,22 @@
     <PackageCertificateThumbprint>4442A1FDA087FD12976FFF174742ECB56BCB0F1E</PackageCertificateThumbprint>
     <PackageCertificateKeyFile>JustWatermarkIt.WinUI_TemporaryKey.pfx</PackageCertificateKeyFile>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+    <DefaultLanguage>en</DefaultLanguage>
   </PropertyGroup>
   <ItemGroup>
-    <PRIResource Remove="Strings\en-US\Resources.resw" />
+    <PRIResource Remove="Strings\en\Resources.resw" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Strings\en-US\Resources.resw">
+    <EmbeddedResource Include="Strings\en\Resources.resw">
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <Generator>ResXFileCodeGenerator</Generator>
     </EmbeddedResource>
-    <EmbeddedResource Include="Strings\fr-FR\Resources.resw">
+    <EmbeddedResource Include="Strings\fr\Resources.resw">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <PRIResource Remove="Strings\fr-FR\Resources.resw" />
+    <PRIResource Remove="Strings\fr\Resources.resw" />
   </ItemGroup>
 </Project>
