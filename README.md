@@ -7,6 +7,7 @@ That's all? Yes. But it has options and funny buttons so... Stay around
 * Select a source folder
 * Select a destination folder
 * Select a file, used as a watermark
+
 And that basically fits the job. But that's not all of the funny buttons!
 
 ## Features
@@ -19,6 +20,6 @@ And that basically fits the job. But that's not all of the funny buttons!
 
 ## Licence
 Distributed freely, for non-commercial use, commercial-use, personnal-use, grouped-use, ... So basically no licence.
-Whatever you want. It is open-source anyway.
+Whatever you want. It is open-source anyway. You can fork it as much as you want or use it at will.
 
-*However, I cannot be held responsible of what you will do with it.*
+*However, I cannot be held responsible of what you will do with it.* I provide the tool, not the usage or the intentions.
